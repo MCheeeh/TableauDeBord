@@ -124,70 +124,74 @@
     <tbody></tbody>
 </table>
 
-<script>
-// URL de ton API Apps Script
-const API_URL = "https://script.google.com/a/macros/valeo.com/s/AKfycbwWa-d2xeXenkdP-2CS2vGFTfJqRvHJRntVMqCO7NaG1B_RKnfnxn_w3n3m5QlX0UKqfQ/exec";
+    <script>
+    const API_URL = "https://script.google.com/a/macros/valeo.com/s/AKfycbwZa05pjbiVerSUK8X44xg9r3QI47MDkRIk6JGG6Cd4b6Z119aWjQHHLGR0IGMjwJX42A/exec";
+    
+    // Fonction principale
+    async function loadData() {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+    
+        console.log("Colonnes détectées :", Object.keys(data[0]));
+        console.log("Données :", data);
+    
+        displayKPIs(data);
+        displayTable(data);
+    }
+    
+    // Fonction KPI
+    function displayKPIs(data) {
+        const total = data.length;
+    
+        const closed = data.filter(t => t.Status === "Closed").length;
+        const wip = data.filter(t => t.Status === "Work In Progress").length;
+        const start = data.filter(t => t.Status === "To start").length;
+    
+        // ATTENTION : la colonne s'appelle "Due date " avec un espace !
+        const late = data.filter(t => {
+            if (!t["Due date "] || t.Status === "Closed") return false;
+            const due = new Date(t["Due date "]);
+            return due < new Date();
+        }).length;
+    
+        const progress = Math.round((closed / total) * 100);
+    
+        document.getElementById("kpi-total").textContent = total;
+        document.getElementById("kpi-closed").textContent = closed;
+        document.getElementById("kpi-wip").textContent = wip;
+        document.getElementById("kpi-start").textContent = start;
+        document.getElementById("kpi-late").textContent = late;
+    
+        const bar = document.getElementById("progress-bar");
+        bar.style.width = progress + "%";
+        bar.textContent = progress + "%";
+    }
+    
+    // Affichage du tableau
+    function displayTable(data) {
+        const tbody = document.querySelector("#task-table tbody");
+        tbody.innerHTML = "";
+    
+        data.forEach(row => {
+            const tr = document.createElement("tr");
+    
+            tr.innerHTML = `
+                <td>${row["N° Item"]}</td>
+                <td>${row["Action"]}</td>
+                <td>${row["Pilot"]}</td>
+                <td>${row["Status"]}</td>
+                <td>${row["Due date "] || ""}</td>
+                <td>${row["Done date"] || ""}</td>
+                <td>${row["Comment"] || ""}</td>
+            `;
+    
+            tbody.appendChild(tr);
+        });
+    }
+    
+    loadData();
+    </script>
 
-// Fonction principale : charge les données
-async function loadData() {
-    const response = await fetch(API_URL);
-    const data = await response.json();
-
-    displayKPIs(data);
-    displayTable(data);
-}
-
-// Calcul des KPI
-function displayKPIs(data) {
-    const total = data.length;
-    const closed = data.filter(t => t.Status === "Closed").length;
-    const wip = data.filter(t => t.Status === "Work In Progress").length;
-    const start = data.filter(t => t.Status === "To start").length;
-
-    const late = data.filter(t => {
-        if (!t["Due date"] || t.Status === "Closed") return false;
-        const due = new Date(t["Due date"]);
-        return due < new Date();
-    }).length;
-
-    const progress = Math.round((closed / total) * 100);
-
-    document.getElementById("kpi-total").textContent = total;
-    document.getElementById("kpi-closed").textContent = closed;
-    document.getElementById("kpi-wip").textContent = wip;
-    document.getElementById("kpi-start").textContent = start;
-    document.getElementById("kpi-late").textContent = late;
-
-    const bar = document.getElementById("progress-bar");
-    bar.style.width = progress + "%";
-    bar.textContent = progress + "%";
-}
-
-// Affichage du tableau
-function displayTable(data) {
-    const tbody = document.querySelector("#task-table tbody");
-    tbody.innerHTML = "";
-
-    data.forEach(row => {
-        const tr = document.createElement("tr");
-
-        tr.innerHTML = `
-            <td>${row["N° Item"]}</td>
-            <td>${row["Action"]}</td>
-            <td>${row["Pilot"]}</td>
-            <td>${row["Status"]}</td>
-            <td>${row["Due date"] || ""}</td>
-            <td>${row["Done date"] || ""}</td>
-            <td>${row["Comment"] || ""}</td>
-        `;
-
-        tbody.appendChild(tr);
-    });
-}
-
-// Lancement
-loadData();
-</script>
 
 </body>
 </html>

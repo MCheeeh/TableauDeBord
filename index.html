@@ -127,30 +127,34 @@
     <script>
     const API_URL = "https://script.google.com/a/macros/valeo.com/s/AKfycbwZa05pjbiVerSUK8X44xg9r3QI47MDkRIk6JGG6Cd4b6Z119aWjQHHLGR0IGMjwJX42A/exec";
     
-    // Fonction principale
     async function loadData() {
         const response = await fetch(API_URL);
-        const data = await response.json();
+        const csv = await response.text();
     
-        console.log("Colonnes détectées :", Object.keys(data[0]));
-        console.log("Données :", data);
+        const rows = csv.trim().split("\n").map(r => r.split(",").map(v => v.replace(/"/g, "")));
+    
+        const headers = rows[0];
+        const data = rows.slice(1).map(row => {
+            let obj = {};
+            headers.forEach((h, i) => obj[h] = row[i]);
+            return obj;
+        });
+    
+        console.log("Données CSV converties :", data);
     
         displayKPIs(data);
         displayTable(data);
     }
     
-    // Fonction KPI
     function displayKPIs(data) {
         const total = data.length;
-    
         const closed = data.filter(t => t.Status === "Closed").length;
         const wip = data.filter(t => t.Status === "Work In Progress").length;
         const start = data.filter(t => t.Status === "To start").length;
     
-        // ATTENTION : la colonne s'appelle "Due date " avec un espace !
         const late = data.filter(t => {
-            if (!t["Due date "] || t.Status === "Closed") return false;
-            const due = new Date(t["Due date "]);
+            if (!t["Due date"] || t.Status === "Closed") return false;
+            const due = new Date(t["Due date"]);
             return due < new Date();
         }).length;
     
@@ -167,7 +171,6 @@
         bar.textContent = progress + "%";
     }
     
-    // Affichage du tableau
     function displayTable(data) {
         const tbody = document.querySelector("#task-table tbody");
         tbody.innerHTML = "";
@@ -180,9 +183,9 @@
                 <td>${row["Action"]}</td>
                 <td>${row["Pilot"]}</td>
                 <td>${row["Status"]}</td>
-                <td>${row["Due date "] || ""}</td>
-                <td>${row["Done date"] || ""}</td>
-                <td>${row["Comment"] || ""}</td>
+                <td>${row["Due date"]}</td>
+                <td>${row["Done date"]}</td>
+                <td>${row["Comment"]}</td>
             `;
     
             tbody.appendChild(tr);
@@ -191,6 +194,7 @@
     
     loadData();
     </script>
+
 
 
 </body>

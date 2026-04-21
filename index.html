@@ -66,90 +66,95 @@
     <tbody></tbody>
 </table>
 
-<script>
-// URL de ton Apps Script qui renvoie le CSV
-const API_URL = "https://script.google.com/a/macros/valeo.com/s/AKfycbxHos6zCyj3U2zyd39l6myBad52nI7YjM6GeQo1mzkhkWienHyOcLm3vcJOAf6xnYIJWg/exec";
+    <script>
+    const API_URL = "https://script.google.com/a/macros/valeo.com/s/AKfycbxHos6zCyj3U2zyd39l6myBad52nI7YjM6GeQo1mzkhkWienHyOcLm3vcJOAf6xnYIJWg/exec";
+    
+    async function loadData() {
+        const response = await fetch(API_URL);
+        const text = await response.text();
+    
+        // On split par lignes
+        const lines = text.trim().split("\n");
+    
+        // On split chaque ligne par TAB
+        const rows = lines.map(line => line.split("\t"));
+    
+        // La première ligne = en-têtes
+        const headers = rows[0];
+    
+        // Le reste = données
+        const data = rows.slice(1).map(row => {
+            let obj = {};
+            headers.forEach((h, i) => obj[h.trim()] = (row[i] || "").trim());
+            return obj;
+        });
+    
+        console.log("Colonnes détectées :", headers);
+        console.log("Données TSV :", data);
+    
+        displayKPIs(data);
+        displayTable(data);
+    }
+    
+    function displayKPIs(data) {
+        const total = data.length;
+    
+        const closed = data.filter(t => t["Status"] === "Closed").length;
+        const wip = data.filter(t => t["Status"] === "Work In Progress").length;
+        const start = data.filter(t => t["Status"] === "To start").length;
+    
+        const late = data.filter(t => {
+            const d = t["Due date"] || t["Due date "];
+            if (!d || t["Status"] === "Closed") return false;
+            const due = parseDate(d);
+            if (!due) return false;
+            return due < new Date();
+        }).length;
+    
+        const progress = total > 0 ? Math.round((closed / total) * 100) : 0;
+    
+        document.getElementById("kpi-total").textContent = total;
+        document.getElementById("kpi-closed").textContent = closed;
+        document.getElementById("kpi-wip").textContent = wip;
+        document.getElementById("kpi-start").textContent = start;
+        document.getElementById("kpi-late").textContent = late;
+    
+        const bar = document.getElementById("progress-bar");
+        bar.style.width = progress + "%";
+        bar.textContent = progress + "%";
+    }
+    
+    function parseDate(str) {
+        if (!str) return null;
+        const p = str.split("/");
+        if (p.length !== 3) return null;
+        return new Date(p[2], p[1] - 1, p[0]);
+    }
+    
+    function displayTable(data) {
+        const tbody = document.querySelector("#task-table tbody");
+        tbody.innerHTML = "";
+    
+        data.forEach(row => {
+            const tr = document.createElement("tr");
+    
+            tr.innerHTML = `
+                <td>${row["N° Item"] || ""}</td>
+                <td>${row["Action"] || ""}</td>
+                <td>${row["Pilot"] || ""}</td>
+                <td>${row["Status"] || ""}</td>
+                <td>${row["Due date"] || row["Due date "] || ""}</td>
+                <td>${row["Done date"] || ""}</td>
+                <td>${row["Comment"] || ""}</td>
+            `;
+    
+            tbody.appendChild(tr);
+        });
+    }
+    
+    loadData();
+    </script>
 
-async function loadData() {
-    const response = await fetch(API_URL);
-    const csvText = await response.text();
-
-    // Parsing robuste du CSV avec PapaParse
-    const parsed = Papa.parse(csvText, {
-        header: true,          // première ligne = en-têtes
-        skipEmptyLines: true
-    });
-
-    const data = parsed.data;
-    console.log("Données parsées :", data);
-
-    displayKPIs(data);
-    displayTable(data);
-}
-
-function displayKPIs(data) {
-    const total = data.length;
-    const closed = data.filter(t => t.Status === "Closed").length;
-    const wip = data.filter(t => t.Status === "Work In Progress").length;
-    const start = data.filter(t => t.Status === "To start").length;
-
-    const late = data.filter(t => {
-        if (!t["Due date "] || t.Status === "Closed") return false;
-        const due = parseDate(t["Due date "]);
-        if (!due) return false;
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        return due < today;
-    }).length;
-
-    const progress = total > 0 ? Math.round((closed / total) * 100) : 0;
-
-    document.getElementById("kpi-total").textContent = total;
-    document.getElementById("kpi-closed").textContent = closed;
-    document.getElementById("kpi-wip").textContent = wip;
-    document.getElementById("kpi-start").textContent = start;
-    document.getElementById("kpi-late").textContent = late;
-
-    const bar = document.getElementById("progress-bar");
-    bar.style.width = progress + "%";
-    bar.textContent = progress + "%";
-}
-
-// parse "20/4/2025" ou "24/10/2024" → Date JS
-function parseDate(str) {
-    if (!str) return null;
-    const parts = str.split("/");
-    if (parts.length !== 3) return null;
-    const d = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10) - 1;
-    const y = parseInt(parts[2], 10);
-    if (isNaN(d) || isNaN(m) || isNaN(y)) return null;
-    return new Date(y, m, d);
-}
-
-function displayTable(data) {
-    const tbody = document.querySelector("#task-table tbody");
-    tbody.innerHTML = "";
-
-    data.forEach(row => {
-        const tr = document.createElement("tr");
-
-        tr.innerHTML = `
-            <td>${row["N° Item"] || ""}</td>
-            <td>${row["Action"] || ""}</td>
-            <td>${row["Pilot"] || ""}</td>
-            <td>${row["Status"] || ""}</td>
-            <td>${row["Due date "] || ""}</td>
-            <td>${row["Done date"] || ""}</td>
-            <td>${row["Comment"] || ""}</td>
-        `;
-
-        tbody.appendChild(tr);
-    });
-}
-
-loadData();
-</script>
 
 </body>
 </html>
